@@ -6,10 +6,16 @@ and empirical benchmark results.
 
 import json
 import os
+import sys
 from pathlib import Path
 from datetime import datetime, timezone
 import pandas as pd
 import streamlit as st
+
+# Ensure project root is on sys.path regardless of execution entrypoint
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from memory.agent_pipeline import TemporalMemoryAgentPipeline
 from memory.schema import MemoryStatus

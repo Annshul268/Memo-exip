@@ -5,9 +5,16 @@ records real measurements, and writes raw results to results/benchmark_results.j
 """
 
 import json
+import os
+import sys
 import time
 from pathlib import Path
 from typing import Dict, Any, List
+
+# Ensure project root is on sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from evaluation.dataset_generator import generate_benchmark_dataset
 from evaluation.baselines import (
