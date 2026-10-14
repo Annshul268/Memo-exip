@@ -5,9 +5,9 @@
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-0.5+-orange.svg)](https://www.trychroma.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-ACID_Source_of_Truth-003B57.svg)](https://www.sqlite.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35+-FF4B4B.svg)](https://streamlit.io/)
-[![Tests](https://img.shields.io/badge/pytest-12_passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/pytest-14_passed-brightgreen.svg)](https://docs.pytest.org/)
 
-**Memo-exip** is a university-level computer science research project investigating **continual external memory with adaptive temporal management for Large Language Model (LLM) agents**.
+**MEMO-EXI** is a research prototype investigating **continual external memory with adaptive temporal management for Large Language Model (LLM) agents**.
 
 The system addresses the fundamental limitation of standard vector-based Retrieval-Augmented Generation (RAG): **vector similarity alone does not establish fact validity, temporal correctness, or obsolescence.** When user facts evolve across conversations, conventional semantic retrievers indiscriminately retrieve stale, contradictory, and superseded facts, inflating prompt tokens and causing hallucinations.
 
@@ -204,11 +204,11 @@ In a separate terminal:
 streamlit run ui/app.py --server.port 8501
 ```
 Navigate to `http://localhost:8501` to access:
-- **💬 Chat & Fact Demo:** Ingest facts and see changing facts update the current state while preserving history.
-- **🗂️ Memory Explorer:** View all stored records, filter by status, and trace version chains.
-- **🔍 Context Inspector:** Inspect candidate memories, utility scores, and knapsack token packing.
-- **📊 Evaluation Dashboard:** View interactive charts and empirical baseline comparisons.
-- **⚙️ System Settings:** Storage metrics and reconciliation controls.
+- **Overview:** System summary, live backend counts, retrieval mode, context budget, and temporal architecture guide.
+- **Memory Chat:** Interactive conversation, fact ingestion, historical/current queries, and memory inspection.
+- **Memory Explorer:** Searchable memory table, validity intervals, disputed facts, and chronological version lineage.
+- **Context Inspector:** Transparent breakdown of candidate retrieval, utility scoring, and knapsack token packing.
+- **Evaluation:** Real empirical benchmark results across all 5 baselines with accuracy and token consumption comparisons.
 
 ---
 
@@ -218,7 +218,7 @@ Navigate to `http://localhost:8501` to access:
 ```bash
 pytest -v
 ```
-All 12 test suites run in ~2 seconds with zero external network dependencies.
+All 14 unit and integration tests run deterministically with zero external network dependencies.
 
 ### 7.2 Reproduce the Benchmark Evaluation
 ```bash

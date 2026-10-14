@@ -2,6 +2,8 @@
 FastAPI route definitions for temporal memory operations.
 """
 
+import json
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, status
@@ -188,3 +190,41 @@ def reconcile_storage():
     pipeline = get_pipeline()
     stats = pipeline.engine.reconcile_storage()
     return {"message": "Storage reconciliation complete", "stats": stats}
+
+
+@router.post("/api/memories/reset", response_model=dict, tags=["System"])
+def reset_memories(confirm: bool = Query(False, description="Must be set to true to execute reset")):
+    """Reset all memory storage (SQLite and ChromaDB). Requires explicit confirmation."""
+    if not confirm:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset requires explicit confirmation flag 'confirm=true'."
+        )
+    pipeline = get_pipeline()
+    pipeline.reset()
+    return {"message": "All memories and vector indices have been purged successfully."}
+
+
+@router.post("/api/evaluation/run", response_model=dict, tags=["Evaluation"])
+def run_evaluation_benchmark(budget_tokens: int = Query(500, ge=100, le=2048)):
+    """Execute reproducible benchmark evaluation across all 5 baselines."""
+    from evaluation.runner import run_benchmark
+    results = run_benchmark(output_dir="results", budget_tokens=budget_tokens)
+    return {
+        "message": "Benchmark evaluation executed successfully",
+        "metadata": results.get("metadata"),
+        "baseline_summaries": results.get("baseline_summaries")
+    }
+
+
+@router.get("/api/evaluation/results", response_model=dict, tags=["Evaluation"])
+def get_evaluation_results():
+    """Retrieve raw benchmark evaluation results from storage."""
+    results_file = Path("results/benchmark_results.json")
+    if not results_file.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No benchmark results found. Run /api/evaluation/run first."
+        )
+    with open(results_file, "r", encoding="utf-8") as f:
+        return json.load(f)

@@ -83,3 +83,14 @@ def test_add_and_query_memory_api(client_with_clean_stores):
     agent_data = agent_resp.json()
     assert "Dr. Adams" in agent_data["response"]
     assert agent_data["budget_respected"] is True
+
+    # 6. Reset endpoint requires confirm=true
+    err_reset = client.post("/api/memories/reset?confirm=false")
+    assert err_reset.status_code == 400
+
+    ok_reset = client.post("/api/memories/reset?confirm=true")
+    assert ok_reset.status_code == 200
+
+    empty_check = client.get("/api/memories")
+    assert empty_check.status_code == 200
+    assert len(empty_check.json()) == 0

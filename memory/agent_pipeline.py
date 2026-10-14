@@ -166,3 +166,8 @@ class TemporalMemoryAgentPipeline:
             "budget_tokens": budget,
             "budget_respected": selection.budget_respected
         }
+
+    def reset(self) -> None:
+        """Purge all stores for clean evaluation or testing."""
+        self.sqlite.clear()
+        self.vector.clear()

@@ -1,32 +1,120 @@
 """
-Interactive Streamlit Application for Memo-exip.
-Demonstrates temporal memory management, version lineage, context inspection,
-and empirical benchmark results.
+MEMO-EXI: Research-Grade Adaptive Temporal Memory Management Interface.
+Minimal, modern, editorial UI built with Streamlit.
 """
 
 import json
 import os
 import sys
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional, List, Dict, Any
 import pandas as pd
 import streamlit as st
 
-# Ensure project root is on sys.path regardless of execution entrypoint
+# Ensure project root is in sys.path regardless of execution entry point
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from memory.agent_pipeline import TemporalMemoryAgentPipeline
-from memory.schema import MemoryStatus
+from memory.schema import MemoryStatus, QueryTemporalIntent
 
 # Page configuration
 st.set_page_config(
-    page_title="Memo-exip | Adaptive Temporal Memory",
+    page_title="MEMO-EXI | Adaptive Temporal Memory",
     page_icon="⏳",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Refined Minimal Editorial Theme CSS
+st.markdown("""
+<style>
+    /* Global Fonts & Palette */
+    html, body, [class*="css"] {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: #191919;
+    }
+    
+    /* Top title & headers */
+    h1, h2, h3, h4 {
+        font-weight: 600 !important;
+        letter-spacing: -0.02em;
+        color: #111111;
+    }
+    
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background-color: #F6F6F2;
+        border-right: 1px solid #E6E6DF;
+        padding-top: 1.5rem;
+    }
+    
+    /* Subtle Cards & Containers */
+    .memo-card {
+        background-color: #FFFFFF;
+        border: 1px solid #E5E5DF;
+        border-radius: 8px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    
+    .memo-metric-box {
+        background-color: #FFFFFF;
+        border: 1px solid #E5E5DF;
+        border-radius: 6px;
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .memo-metric-val {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #2C4A6F;
+        line-height: 1.2;
+    }
+    
+    .memo-metric-lbl {
+        font-size: 0.8rem;
+        color: #666666;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 0.25rem;
+    }
+    
+    /* Status Badges */
+    .badge {
+        display: inline-block;
+        padding: 0.2rem 0.55rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .badge-current { background-color: #EBF5EE; color: #2D6A4F; border: 1px solid #D8EEDF; }
+    .badge-superseded { background-color: #F1F3F5; color: #495057; border: 1px solid #E2E6EA; }
+    .badge-disputed { background-color: #FFF3BF; color: #D9480F; border: 1px solid #FFE066; }
+    
+    /* Clean inputs & buttons */
+    div.stButton > button:first-child {
+        background-color: #2C4A6F;
+        color: #FFFFFF;
+        border: 1px solid #2C4A6F;
+        border-radius: 6px;
+        font-weight: 500;
+        padding: 0.45rem 1.2rem;
+        transition: all 0.15s ease-in-out;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #1E3550;
+        border-color: #1E3550;
+        color: #FFFFFF;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 
 @st.cache_resource
@@ -41,197 +129,363 @@ def get_pipeline():
 pipeline = get_pipeline()
 
 # Sidebar Navigation & System Status
-st.sidebar.title("⏳ Memo-exip")
-st.sidebar.caption("Adaptive Temporal Memory for LLM Agents")
+st.sidebar.markdown("### MEMO-EXI")
+st.sidebar.caption("Adaptive Temporal Memory Management for LLM Agents")
 
-# Status badges
-mode_badge = "🟢 MOCK LLM (Deterministic)" if pipeline.llm.is_mock else f"⚡ REAL LLM ({pipeline.llm.provider_name})"
-st.sidebar.info(f"**Runtime Provider:** {mode_badge}")
+# Status indicator
+status_color = "#2D6A4F" if pipeline.llm.is_mock else "#2C4A6F"
+provider_label = "Mock LLM (Deterministic)" if pipeline.llm.is_mock else f"Provider: {pipeline.llm.provider_name}"
+st.sidebar.markdown(
+    f"""
+    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem; font-size:0.85rem; color:#444;">
+        <span style="height:9px; width:9px; background-color:{status_color}; border-radius:50%; display:inline-block;"></span>
+        <span>{provider_label}</span>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-app_mode = st.sidebar.radio(
+app_section = st.sidebar.radio(
     "Navigation",
     [
-        "💬 Chat & Fact Demo",
-        "🗂️ Memory Explorer",
-        "🔍 Context Inspector",
-        "📊 Evaluation Dashboard",
-        "⚙️ System Settings"
-    ]
+        "Overview",
+        "Memory Chat",
+        "Memory Explorer",
+        "Context Inspector",
+        "Evaluation"
+    ],
+    index=0
 )
 
-st.sidebar.divider()
-st.sidebar.markdown(
-    """
-    **Research Project:**  
-    Adaptive Temporal Memory Management for LLM Agents Enhancement  
-    *Option A: Continual External Memory*
-    """
-)
+st.sidebar.markdown("---")
+st.sidebar.caption("Research prototype • SQLite source-of-truth • ChromaDB vector index")
 
 
 # ==============================================================================
-# SECTION A: Chat & Fact Demo
+# SECTION 1: Overview
 # ==============================================================================
-if app_mode == "💬 Chat & Fact Demo":
-    st.header("💬 Conversation & Temporal Memory Demonstration")
+if app_section == "Overview":
+    st.title("MEMO-EXI")
+    st.markdown("#### Adaptive Temporal Memory Management for LLM Agents")
     st.write(
-        "Interact with the agent or ingest facts. Watch how changing facts update the "
-        "current state while strictly preserving historical versions for retroactive queries."
+        "A minimal, research-grade external memory architecture designed to preserve version lineages, "
+        "prevent stale-fact hallucinations, handle conflicting facts safely, and pack relevant memories into strict context budgets."
     )
 
-    col1, col2 = st.columns([1, 1])
+    # Real backend data queries
+    all_records = pipeline.sqlite.list_records()
+    current_count = sum(1 for r in all_records if r.status == MemoryStatus.CURRENT)
+    superseded_count = sum(1 for r in all_records if r.status == MemoryStatus.SUPERSEDED)
+    disputed_count = sum(1 for r in all_records if r.status == MemoryStatus.DISPUTED)
+    vector_count = pipeline.vector.collection.count()
 
-    with col1:
-        st.subheader("📥 Ingest Fact or Natural Statement")
-        with st.form("ingest_form"):
-            in_subject = st.text_input("Subject Entity", value="user", placeholder="e.g. user, project, client")
-            in_attribute = st.text_input("Attribute", value="deadline", placeholder="e.g. deadline, address, supervisor")
-            in_value = st.text_input("Factual Value", value="November 20", placeholder="e.g. November 20, Room 204")
-            
-            c_a, c_b = st.columns(2)
-            with c_a:
-                in_conf = st.slider("Confidence", 0.1, 1.0, 1.0, 0.05)
-            with c_b:
-                in_imp = st.slider("Importance", 0.1, 1.0, 0.8, 0.05)
-                
-            in_correction = st.checkbox("Confirmed explicit update / correction", value=True)
-            submit_fact = st.form_submit_button("Ingest Fact", use_container_width=True)
+    # Backend Metrics Row
+    m1, m2, m3, m4, m5 = st.columns(5)
+    with m1:
+        st.markdown(f"""
+        <div class="memo-metric-box">
+            <div class="memo-metric-val">{len(all_records)}</div>
+            <div class="memo-metric-lbl">Total Records</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m2:
+        st.markdown(f"""
+        <div class="memo-metric-box">
+            <div class="memo-metric-val">{current_count}</div>
+            <div class="memo-metric-lbl">Current Facts</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m3:
+        st.markdown(f"""
+        <div class="memo-metric-box">
+            <div class="memo-metric-val">{superseded_count}</div>
+            <div class="memo-metric-lbl">Superseded Versions</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m4:
+        st.markdown(f"""
+        <div class="memo-metric-box">
+            <div class="memo-metric-val">{vector_count}</div>
+            <div class="memo-metric-lbl">Indexed Vectors</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m5:
+        st.markdown(f"""
+        <div class="memo-metric-box">
+            <div class="memo-metric-val">{pipeline.default_budget_tokens}</div>
+            <div class="memo-metric-lbl">Budget (Tokens)</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-            if submit_fact:
-                if in_subject and in_attribute and in_value:
-                    res = pipeline.ingest_fact(
-                        subject=in_subject,
-                        attribute=in_attribute,
-                        value=in_value,
-                        confidence=in_conf,
-                        importance=in_imp,
-                        is_explicit_correction=in_correction
-                    )
-                    st.success(f"Fact Ingested! Action: `{res['action']}` | Status: `{res['status']}`")
-                else:
-                    st.error("Please fill in Subject, Attribute, and Value.")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    with col2:
-        st.subheader("❓ Ask the Agent")
-        with st.form("query_form"):
-            user_q = st.text_input(
-                "Query",
-                value="What is my current deadline?",
-                placeholder="e.g. What is my current deadline? or What was my previous deadline before?"
-            )
-            q_budget = st.slider("Token Budget", min_value=128, max_value=2048, value=512, step=64)
-            submit_q = st.form_submit_button("Submit Query", use_container_width=True)
+    # Architecture and Temporal Logic Explainer
+    col_left, col_right = st.columns([1, 1])
 
-            if submit_q and user_q:
-                with st.spinner("Processing temporal retrieval and synthesizing response..."):
-                    agent_res = pipeline.query(user_query=user_q, budget_tokens=q_budget)
+    with col_left:
+        st.markdown("### How Temporal Memory Works")
+        st.markdown("""
+        Standard Retrieval-Augmented Generation (RAG) retrieves memories based solely on semantic vector similarity.
+        When a user changes a fact (e.g., *“my deadline changed from Nov 10 to Nov 20”*), vector search frequently retrieves
+        both facts or mistakenly favors the older one, causing catastrophic hallucinations.
+        
+        **MEMO-EXI resolves this through four research contributions:**
+        
+        1. **Bitemporal Relational Model:** Separates *system transaction time* (when recorded) from *real-world validity time* (`valid_from` to `valid_until`).
+        2. **Safe, Non-Destructive Superseding:** Updating a fact closes the previous version's validity interval and links it via `supersedes_id`. Historical versions remain permanently queryable.
+        3. **Query Temporal Intent Classification:** Evaluates whether queries target *current* facts, *historical* past facts, point-in-time intervals, or chronological *timelines*.
+        4. **Utility-per-Token Knapsack Selection:** Ranks candidates by combined semantic, temporal, and importance utility, penalizing redundant versions to fit within strict token budgets.
+        """)
 
-                st.markdown(f"**Temporal Intent Detected:** `{agent_res['temporal_intent'].upper()}`")
-                st.markdown(f"**Agent Response:**")
-                st.info(agent_res["response"])
-
-                st.markdown(
-                    f"**Context Usage:** {agent_res['used_tokens']} / {agent_res['budget_tokens']} tokens "
-                    f"({'✅ Within Budget' if agent_res['budget_respected'] else '❌ Budget Exceeded'})"
-                )
-
-                # Show quick retrieved summary
-                with st.expander("Retrieved Context Items"):
-                    for m in agent_res["selection_result"].selected_memories:
-                        st.markdown(f"- `{m.record.status.value.upper()}`: {m.record.subject} -> {m.record.attribute}: **{m.record.value}** (Sim: {m.semantic_similarity:.2f}, Temp: {m.temporal_relevance:.2f})")
+    with col_right:
+        st.markdown("### System Architecture & Pipeline")
+        st.markdown("""
+        ```
+        User Input (Conversation / Structured Fact)
+                            │
+                            ▼
+               Temporal Update Manager
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+        SQLite Store                 ChromaDB
+        (Authoritative Truth,        (Dense Semantic
+        Lineage & Validity)           Retrieval Index)
+              └─────────────┬─────────────┘
+                            ▼
+              Temporal Intent Classifier
+                            │
+                            ▼
+             Context-Budget Knapsack Selector
+            (Utility Scoring & Redundancy Penalty)
+                            │
+                            ▼
+            Grounded LLM Generation (or Mock)
+        ```
+        """)
 
 
 # ==============================================================================
-# SECTION B: Memory Explorer
+# SECTION 2: Memory Chat
 # ==============================================================================
-elif app_mode == "🗂️ Memory Explorer":
-    st.header("🗂️ Authoritative Memory Explorer (SQLite Store)")
-    st.write("Inspect all persistent memory records, historical versions, and bitemporal metadata.")
+elif app_section == "Memory Chat":
+    st.title("Memory Chat")
+    st.write("Converse with the agent or ingest facts. Observe how updated facts preserve history and respond to current vs historical questions.")
 
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with c1:
-        filter_status = st.selectbox("Filter Status", ["ALL", "current", "superseded", "disputed"])
-    with c2:
-        filter_subject = st.text_input("Filter by Subject", value="")
-    with c3:
-        if st.button("🔄 Refresh Data", use_container_width=True):
+    # Reset Data with confirmation
+    with st.expander("Storage Management / Reset Demo Data"):
+        st.warning("Resetting will wipe all stored memories from both SQLite and ChromaDB.")
+        confirm_reset = st.checkbox("I confirm I want to reset all demo memories", value=False)
+        if st.button("Purge Memory Storage", disabled=not confirm_reset):
+            pipeline.reset()
+            if "messages" in st.session_state:
+                st.session_state.messages = []
+            st.success("Memory storage purged. All databases reset.")
             st.rerun()
 
-    status_arg = None if filter_status == "ALL" else MemoryStatus(filter_status)
-    subj_arg = filter_subject.strip() if filter_subject.strip() else None
+    # Two columns: Fact Ingestion on left, Chat & Query on right
+    c_ingest, c_chat = st.columns([1, 1.2])
+
+    with c_ingest:
+        st.markdown("### 📥 Ingest Information")
+        ingest_mode = st.radio("Ingestion Mode", ["Natural Language Statement", "Structured Fact"], horizontal=True)
+
+        if ingest_mode == "Natural Language Statement":
+            with st.form("nl_form"):
+                st.caption("Examples: 'My deadline is November 20', 'The project manager is Alice'")
+                stmt = st.text_input("Natural Language Assertion", value="My deadline is November 20")
+                submit_stmt = st.form_submit_button("Ingest Statement", use_container_width=True)
+                if submit_stmt and stmt:
+                    res = pipeline.ingest_natural_statement(stmt)
+                    rec = res["record"]
+                    st.success(f"Ingested! Action: `{res['action']}` | Subject: `{rec.subject}`, Attribute: `{rec.attribute}` -> `{rec.value}`")
+
+        else:
+            with st.form("struct_form"):
+                subj = st.text_input("Subject Entity", value="user", placeholder="e.g. user, project, client")
+                attr = st.text_input("Attribute / Relation", value="deadline", placeholder="e.g. deadline, supervisor")
+                val = st.text_input("Factual Value", value="November 20", placeholder="e.g. November 20, Hall B")
+                
+                c_conf, c_imp = st.columns(2)
+                with c_conf:
+                    conf = st.slider("Confidence", 0.1, 1.0, 1.0, 0.05)
+                with c_imp:
+                    imp = st.slider("Importance", 0.1, 1.0, 0.8, 0.05)
+
+                explicit_corr = st.checkbox("Explicit confirmed update / correction", value=True)
+                submit_fact = st.form_submit_button("Commit Structured Fact", use_container_width=True)
+
+                if submit_fact and subj and attr and val:
+                    res = pipeline.ingest_fact(
+                        subject=subj,
+                        attribute=attr,
+                        value=val,
+                        confidence=conf,
+                        importance=imp,
+                        is_explicit_correction=explicit_corr
+                    )
+                    st.success(f"Committed! Action: `{res['action']}` | Status: `{res['status']}`")
+
+    with c_chat:
+        st.markdown("### ❓ Query the Agent")
+        
+        # Budget control
+        chat_budget = st.slider("Context Token Budget", min_value=128, max_value=2048, value=512, step=64)
+
+        # Predefined test questions for convenience
+        st.caption("Quick sample queries:")
+        q_cols = st.columns(3)
+        sample_q = None
+        if q_cols[0].button("Current Deadline", use_container_width=True):
+            sample_q = "What is my current deadline now?"
+        if q_cols[1].button("Historical Deadline", use_container_width=True):
+            sample_q = "What was my previous deadline before?"
+        if q_cols[2].button("Timeline History", use_container_width=True):
+            sample_q = "What is the history of my deadline changes?"
+
+        # Chat input
+        query_input = st.text_input("Ask a question:", value=sample_q if sample_q else "", placeholder="e.g. What is my current deadline now?")
+        submit_q = st.button("Submit Query", use_container_width=True)
+
+        if submit_q and query_input:
+            with st.spinner("Executing hybrid retrieval & temporal synthesis..."):
+                ans = pipeline.query(user_query=query_input, budget_tokens=chat_budget)
+
+            st.markdown(f"**Detected Intent:** `{ans['temporal_intent'].upper()}` | **Memories Used:** {ans['selected_count']} / {ans['candidate_count']}")
+            
+            # Agent response card
+            st.markdown(f"""
+            <div class="memo-card">
+                <div style="font-size:0.8rem; color:#666; margin-bottom:0.25rem;">AGENT RESPONSE ({ans['provider'].upper()})</div>
+                <div style="font-size:1.05rem; line-height:1.5;">{ans['response']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Inspection of used memories
+            with st.expander("Inspect Grounded Context (Memories Injected into Prompt)"):
+                sel_res = ans["selection_result"]
+                st.caption(f"Used tokens: {ans['used_tokens']} / {ans['budget_tokens']} | Compliant: {ans['budget_respected']}")
+                if sel_res.selected_memories:
+                    for idx, cand in enumerate(sel_res.selected_memories, 1):
+                        st.markdown(
+                            f"**{idx}. {cand.record.subject} → {cand.record.attribute}:** `{cand.record.value}`  \n"
+                            f"Status: `{cand.record.status.value.upper()}` | Sim: `{cand.semantic_similarity:.2f}` | "
+                            f"Temp: `{cand.temporal_relevance:.2f}` | Utility: `{cand.utility_score:.2f}` | Tokens: `{cand.estimated_tokens}`"
+                        )
+                else:
+                    st.info("No memories selected for this prompt.")
+
+
+# ==============================================================================
+# SECTION 3: Memory Explorer
+# ==============================================================================
+elif app_section == "Memory Explorer":
+    st.title("Memory Explorer")
+    st.write("Authoritative SQLite storage inspection. Review persistent records, validity intervals, and chronological version chains.")
+
+    c_filt1, c_filt2, c_filt3 = st.columns([1, 1, 1])
+    with c_filt1:
+        status_filter = st.selectbox("Status Filter", ["ALL", "current", "superseded", "disputed"])
+    with c_filt2:
+        subject_filter = st.text_input("Filter by Subject Entity", value="")
+    with c_filt3:
+        if st.button("Refresh Storage View", use_container_width=True):
+            st.rerun()
+
+    status_arg = None if status_filter == "ALL" else MemoryStatus(status_filter)
+    subj_arg = subject_filter.strip() if subject_filter.strip() else None
 
     records = pipeline.sqlite.list_records(status=status_arg, subject=subj_arg)
 
     if records:
-        data_rows = []
+        rows = []
         for r in records:
-            data_rows.append({
+            rows.append({
                 "ID": r.id,
                 "Subject": r.subject,
                 "Attribute": r.attribute,
                 "Value": r.value,
                 "Status": r.status.value,
-                "Valid From": r.valid_from.strftime("%Y-%m-%d %H:%M"),
-                "Valid Until": r.valid_until.strftime("%Y-%m-%d %H:%M") if r.valid_until else "Active (None)",
-                "Supersedes ID": r.supersedes_id or "-",
-                "Confidence": r.confidence,
-                "Importance": r.importance,
-                "Access Count": r.access_count
+                "Valid From": r.valid_from.strftime("%Y-%m-%d %H:%M:%S"),
+                "Valid Until": r.valid_until.strftime("%Y-%m-%d %H:%M:%S") if r.valid_until else "Active (None)",
+                "Supersedes ID": r.supersedes_id or "—",
+                "Confidence": round(r.confidence, 2),
+                "Importance": round(r.importance, 2),
+                "Accesses": r.access_count
             })
-        df = pd.DataFrame(data_rows)
+        df = pd.DataFrame(rows)
         st.dataframe(df, use_container_width=True, hide_index=True)
     else:
-        st.info("No memories found matching the specified filters.")
+        st.info("No records match the active filter criteria.")
 
-    st.subheader("📜 Fact Version Lineage")
-    col_hist_s, col_hist_a = st.columns(2)
-    with col_hist_s:
-        hist_s = st.text_input("Entity Subject", value="user", key="hist_s")
-    with col_hist_a:
-        hist_a = st.text_input("Entity Attribute", value="deadline", key="hist_a")
+    st.markdown("---")
+    st.markdown("### 📜 Version Lineage & Timeline Inspection")
+    st.caption("Trace how a specific fact evolved chronologically across updates.")
 
-    if st.button("Trace Lineage Chain"):
-        history = pipeline.engine.get_fact_lineage(hist_s, hist_a)
+    col_l1, col_l2, col_l3 = st.columns([1, 1, 0.8])
+    with col_l1:
+        trace_subj = st.text_input("Subject", value="user", key="trace_s")
+    with col_l2:
+        trace_attr = st.text_input("Attribute", value="deadline", key="trace_a")
+    with col_l3:
+        st.write("")
+        st.write("")
+        trace_btn = st.button("Trace Version Chain", use_container_width=True)
+
+    if trace_btn or trace_subj:
+        history = pipeline.engine.get_fact_lineage(trace_subj, trace_attr)
         if history:
-            st.markdown(f"Found **{len(history)}** versions in lineage for `{hist_s}` -> `{hist_a}`:")
+            st.markdown(f"Found **{len(history)}** versions in lineage for `{trace_subj}` → `{trace_attr}`:")
             for idx, h in enumerate(history, 1):
-                badge = "🟢 CURRENT" if h.status == MemoryStatus.CURRENT else "🕒 SUPERSEDED"
-                st.markdown(
-                    f"**Version {idx}** [{badge}]  \n"
-                    f"- Value: `{h.value}`  \n"
-                    f"- Valid From: `{h.valid_from.isoformat()}` | Valid Until: `{h.valid_until.isoformat() if h.valid_until else 'Active'}`  \n"
-                    f"- Record ID: `{h.id}` (Parent: `{h.supersedes_id or 'None'}`)"
-                )
+                badge_class = "badge-current" if h.status == MemoryStatus.CURRENT else "badge-superseded"
+                if h.status == MemoryStatus.DISPUTED:
+                    badge_class = "badge-disputed"
+                
+                st.markdown(f"""
+                <div class="memo-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                        <strong>Version {idx}: {h.subject} → {h.attribute}</strong>
+                        <span class="badge {badge_class}">{h.status.value}</span>
+                    </div>
+                    <div style="font-size:1.1rem; font-weight:600; color:#111;">Value: "{h.value}"</div>
+                    <div style="font-size:0.85rem; color:#666; margin-top:0.35rem;">
+                        <span>Valid From: <code>{h.valid_from.isoformat()}</code></span> | 
+                        <span>Valid Until: <code>{h.valid_until.isoformat() if h.valid_until else 'Indefinite (Active)'}</code></span> | 
+                        <span>Supersedes: <code>{h.supersedes_id or 'None (Root)'}</code></span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
         else:
-            st.warning("No lineage history found for this entity.")
+            st.info(f"No version history recorded for `{trace_subj}` → `{trace_attr}`.")
 
 
 # ==============================================================================
-# SECTION C: Context Inspector
+# SECTION 4: Context Inspector
 # ==============================================================================
-elif app_mode == "🔍 Context Inspector":
-    st.header("🔍 Context Budget & Memory Selection Inspector")
+elif app_section == "Context Inspector":
+    st.title("Context Inspector")
     st.write(
-        "Inspect the utility scoring, redundancy penalty, and greedy knapsack selection "
-        "algorithm under token budget pressure."
+        "Inspect the utility scoring, redundancy penalty, and token-bounded knapsack selection "
+        "pipeline for any query under context budget constraints."
     )
 
-    sample_query = st.text_input("Inspect query selection for:", value="What is my current deadline now?")
-    budget_limit = st.slider("Context Token Budget", min_value=100, max_value=1500, value=300, step=50)
+    test_q = st.text_input("Test Query for Inspection:", value="What is my current deadline now?")
+    budget_setting = st.slider("Context Token Budget", min_value=100, max_value=1500, value=300, step=50)
 
-    if st.button("Run Inspection Analysis", use_container_width=True):
-        candidates = pipeline.retriever.retrieve(sample_query, top_k=10)
-        selection = pipeline.budget_manager.select_memories(candidates, budget_tokens=budget_limit)
+    if st.button("Analyze Selection Process", use_container_width=True):
+        candidates = pipeline.retriever.retrieve(test_q, top_k=10)
+        selection = pipeline.budget_manager.select_memories(candidates, budget_tokens=budget_setting)
 
+        # Overview Metrics
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Candidates Retrieved", len(candidates))
         c2.metric("Selected Memories", len(selection.selected_memories))
-        c3.metric("Tokens Used", f"{selection.used_tokens} / {selection.total_budget_tokens}")
-        c4.metric("Budget Respected", "YES ✅" if selection.budget_respected else "NO ❌")
+        c3.metric("Tokens Consumed", f"{selection.used_tokens} / {selection.total_budget_tokens}")
+        c4.metric("Budget Compliant", "YES" if selection.budget_respected else "NO")
 
-        st.subheader("✅ Selected Memories (Injected into Prompt)")
+        # Selected Table
+        st.markdown("### Selected Memories (Injected into Prompt)")
         if selection.selected_memories:
-            sel_rows = [{
+            s_rows = [{
                 "Subject": m.record.subject,
                 "Attribute": m.record.attribute,
                 "Value": m.record.value,
@@ -239,110 +493,107 @@ elif app_mode == "🔍 Context Inspector":
                 "Sim Score": round(m.semantic_similarity, 3),
                 "Temp Score": round(m.temporal_relevance, 3),
                 "Utility Score": round(m.utility_score, 3),
-                "Est. Tokens": m.estimated_tokens
+                "Tokens": m.estimated_tokens
             } for m in selection.selected_memories]
-            st.dataframe(pd.DataFrame(sel_rows), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(s_rows), use_container_width=True, hide_index=True)
         else:
-            st.info("No memories selected.")
+            st.info("No candidates selected under current budget.")
 
-        st.subheader("❌ Rejected Candidates")
+        # Rejected Table
+        st.markdown("### Rejected Candidates")
         if selection.rejected_memories:
-            rej_rows = [{
+            r_rows = [{
                 "Subject": m.record.subject,
                 "Attribute": m.record.attribute,
                 "Value": m.record.value,
                 "Status": m.record.status.value,
                 "Utility Score": round(m.utility_score, 3),
-                "Est. Tokens": m.estimated_tokens,
+                "Tokens": m.estimated_tokens,
                 "Rejection Reason": m.rejection_reason
             } for m in selection.rejected_memories]
-            st.dataframe(pd.DataFrame(rej_rows), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(r_rows), use_container_width=True, hide_index=True)
         else:
-            st.success("All candidates fit within the token budget without rejection!")
+            st.success("All candidates fit within the token budget without rejection.")
 
 
 # ==============================================================================
-# SECTION D: Evaluation Dashboard
+# SECTION 5: Evaluation
 # ==============================================================================
-elif app_mode == "📊 Evaluation Dashboard":
-    st.header("📊 Empirical Benchmark Results & Baseline Comparison")
+elif app_section == "Evaluation":
+    st.title("Evaluation")
     st.write(
-        "Results populated exclusively from actual experimental runs recorded in "
-        "`results/benchmark_results.json`."
+        "Empirical evaluation results generated from actual benchmark runs comparing "
+        "MEMO-EXI against standard memory baselines."
     )
 
-    results_file = Path("results/benchmark_results.json")
-    if not results_file.exists():
-        st.warning("No benchmark output found at `results/benchmark_results.json`. Run the benchmark suite to generate data.")
-        if st.button("Run Benchmark Suite Now"):
-            with st.spinner("Executing benchmark across all 5 baselines..."):
+    results_path = Path("results/benchmark_results.json")
+
+    col_btn, col_info = st.columns([1, 2])
+    with col_btn:
+        if st.button("Run / Re-run Benchmark Suite", use_container_width=True):
+            with st.spinner("Executing 10 scenarios across 5 baselines..."):
                 from evaluation.runner import run_benchmark
-                run_benchmark()
-            st.success("Benchmark completed! Reloading dashboard...")
+                run_benchmark(output_dir="results", budget_tokens=500)
+            st.success("Benchmark completed! Reloading results...")
             st.rerun()
+
+    if not results_path.exists():
+        st.info("No benchmark results found at `results/benchmark_results.json`. Click the button above to run the suite.")
     else:
-        with open(results_file, "r", encoding="utf-8") as f:
-            bench_data = json.load(f)
+        with open(results_path, "r", encoding="utf-8") as f:
+            bench = json.load(f)
 
-        summaries = bench_data.get("baseline_summaries", {})
-        meta = bench_data.get("metadata", {})
+        meta = bench.get("metadata", {})
+        summaries = bench.get("baseline_summaries", {})
+        raw_runs = bench.get("raw_scenario_runs", [])
 
-        st.caption(f"Benchmark executed at: `{meta.get('timestamp')}` | Total Scenarios: `{meta.get('scenario_count')}` | Budget: `{meta.get('budget_tokens')} tokens`")
+        st.caption(f"Run Timestamp: `{meta.get('timestamp')}` | Scenarios: `{meta.get('scenario_count')}` | Budget: `{meta.get('budget_tokens')} tokens`")
 
         # Summary Table
-        summary_rows = []
-        for b_name, metrics in summaries.items():
-            summary_rows.append({
+        sum_rows = []
+        for b_name, data in summaries.items():
+            sum_rows.append({
                 "Baseline": b_name,
-                "Overall Acc (%)": metrics.get("overall_accuracy_pct"),
-                "Current Acc (%)": metrics.get("current_fact_accuracy_pct"),
-                "Historical Acc (%)": metrics.get("historical_fact_accuracy_pct"),
-                "Stale Error (%)": metrics.get("stale_fact_error_rate_pct"),
-                "Avg Tokens": metrics.get("avg_tokens_per_query"),
-                "Budget Compliant (%)": metrics.get("budget_compliance_pct"),
-                "Retrieval Lat (ms)": metrics.get("avg_retrieval_latency_ms")
+                "Overall Acc (%)": data.get("overall_accuracy_pct"),
+                "Current Acc (%)": data.get("current_fact_accuracy_pct"),
+                "Historical Acc (%)": data.get("historical_fact_accuracy_pct"),
+                "Stale Error (%)": data.get("stale_fact_error_rate_pct"),
+                "Avg Tokens": data.get("avg_tokens_per_query"),
+                "Budget Compliant (%)": data.get("budget_compliance_pct"),
+                "Retrieval Lat (ms)": data.get("avg_retrieval_latency_ms")
             })
 
-        summary_df = pd.DataFrame(summary_rows)
+        summary_df = pd.DataFrame(sum_rows)
         st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
-        # Charts
-        c_chart1, c_chart2 = st.columns(2)
-        with c_chart1:
-            st.subheader("Accuracy Comparison (%)")
-            chart_data = summary_df.set_index("Baseline")[["Overall Acc (%)", "Current Acc (%)", "Historical Acc (%)"]]
-            st.bar_chart(chart_data)
+        st.markdown("<br>", unsafe_allow_html=True)
+        c_acc, c_tok = st.columns(2)
 
-        with c_chart2:
-            st.subheader("Token Consumption & Stale Error Rate")
-            col_tok, col_stale = st.columns(2)
-            with col_tok:
-                st.caption("Avg Input Tokens per Query (Lower is more efficient)")
+        with c_acc:
+            st.markdown("#### Accuracy Comparison (%)")
+            chart_acc = summary_df.set_index("Baseline")[["Overall Acc (%)", "Current Acc (%)", "Historical Acc (%)"]]
+            st.bar_chart(chart_acc)
+
+        with c_tok:
+            st.markdown("#### Token Consumption & Stale-Fact Error")
+            col_t1, col_t2 = st.columns(2)
+            with col_t1:
+                st.caption("Avg Input Tokens (Lower is better)")
                 st.bar_chart(summary_df.set_index("Baseline")["Avg Tokens"])
-            with col_stale:
-                st.caption("Stale-Fact Error Rate % (Lower is better)")
+            with col_t2:
+                st.caption("Stale-Fact Error % (Lower is better)")
                 st.bar_chart(summary_df.set_index("Baseline")["Stale Error (%)"])
 
-
-# ==============================================================================
-# SECTION E: Settings
-# ==============================================================================
-elif app_mode == "⚙️ System Settings":
-    st.header("⚙️ System Configuration & Diagnostics")
-    
-    st.subheader("Storage Status")
-    st.markdown(f"- **SQLite DB Path:** `{pipeline.sqlite.db_path.resolve()}`")
-    st.markdown(f"- **ChromaDB Path:** `{pipeline.vector.persist_dir.resolve()}`")
-    st.markdown(f"- **Total Stored Records in SQLite:** `{len(pipeline.sqlite.list_records())}`")
-    st.markdown(f"- **Total Indexed Records in ChromaDB:** `{pipeline.vector.collection.count()}`")
-
-    st.subheader("Reconciliation")
-    st.write("Ensure ChromaDB vector index is in sync with authoritative SQLite store:")
-    if st.button("Run Storage Reconciliation"):
-        stats = pipeline.engine.reconcile_storage()
-        st.success(f"Reconciliation Complete: {stats}")
-
-    st.subheader("Active Provider Configuration")
-    provider = pipeline.llm.provider_name
-    st.text_input("Active LLM Backend", value=provider, disabled=True)
-    st.text_input("Environment LLM_PROVIDER", value=os.getenv("LLM_PROVIDER", "mock"), disabled=True)
+        # Detailed Raw Scenario Breakdown
+        with st.expander("Detailed Scenario-by-Scenario Evaluation Log"):
+            if raw_runs:
+                raw_df = pd.DataFrame([{
+                    "Baseline": r["baseline"],
+                    "Scenario": r["scenario_id"],
+                    "Query": r["query"],
+                    "Expected": r["expected"],
+                    "Correct": "✅" if r["is_correct"] else "❌",
+                    "Stale Error": "⚠️ YES" if r["is_stale_error"] else "NO",
+                    "Tokens": r["used_tokens"]
+                } for r in raw_runs])
+                st.dataframe(raw_df, use_container_width=True, hide_index=True)
